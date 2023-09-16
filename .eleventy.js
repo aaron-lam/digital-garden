@@ -1,4 +1,5 @@
 const slugify = require("@sindresorhus/slugify");
+const translate = require("translate-google");
 const markdownIt = require("markdown-it");
 const fs = require("fs");
 const matter = require("gray-matter");
@@ -91,55 +92,58 @@ module.exports = function (eleventyConfig) {
         }
         if (token.info.startsWith("ad-")) {
           const code = token.content.trim();
-          const parts = code.split("\n")
+          const parts = code.split("\n");
           let titleLine;
           let collapse;
-          let collapsible = false
-          let collapsed = true
+          let collapsible = false;
+          let collapsed = true;
           let icon;
           let color;
-          let nbLinesToSkip = 0
-          for (let i = 0; i<4; i++) {
+          let nbLinesToSkip = 0;
+          for (let i = 0; i < 4; i++) {
             if (parts[i] && parts[i].trim()) {
-              let line = parts[i] && parts[i].trim().toLowerCase()
+              let line = parts[i] && parts[i].trim().toLowerCase();
               if (line.startsWith("title:")) {
                 titleLine = line.substring(6);
-                nbLinesToSkip ++;
+                nbLinesToSkip++;
               } else if (line.startsWith("icon:")) {
                 icon = line.substring(5);
-                nbLinesToSkip ++;
+                nbLinesToSkip++;
               } else if (line.startsWith("collapse:")) {
-                collapsible = true
+                collapsible = true;
                 collapse = line.substring(9);
-                if (collapse && collapse.trim().toLowerCase() == 'open') {
-                  collapsed = false
+                if (collapse && collapse.trim().toLowerCase() == "open") {
+                  collapsed = false;
                 }
-                nbLinesToSkip ++;
+                nbLinesToSkip++;
               } else if (line.startsWith("color:")) {
                 color = line.substring(6);
-                nbLinesToSkip ++;
+                nbLinesToSkip++;
               }
             }
           }
-          const foldDiv = collapsible ? `<div class="callout-fold">
+          const foldDiv = collapsible
+            ? `<div class="callout-fold">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-chevron-down">
               <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-          </div>` : "";
+          </div>`
+            : "";
           const titleDiv = titleLine
-              ? `<div class="callout-title"><div class="callout-title-inner">${titleLine}</div>${foldDiv}</div>`
-              : "";
-          let collapseClasses = titleLine && collapsible ? 'is-collapsible' : ''
+            ? `<div class="callout-title"><div class="callout-title-inner">${titleLine}</div>${foldDiv}</div>`
+            : "";
+          let collapseClasses =
+            titleLine && collapsible ? "is-collapsible" : "";
           if (collapsible && collapsed) {
-            collapseClasses += " is-collapsed"
+            collapseClasses += " is-collapsed";
           }
 
-          let res = `<div data-callout-metadata class="callout ${collapseClasses}" data-callout="${
-            token.info.substring(3)
-          }">${titleDiv}\n<div class="callout-content">${md.render(
+          let res = `<div data-callout-metadata class="callout ${collapseClasses}" data-callout="${token.info.substring(
+            3
+          )}">${titleDiv}\n<div class="callout-content">${md.render(
             parts.slice(nbLinesToSkip).join("\n")
           )}</div></div>`;
-          return res
+          return res;
         }
 
         // Other languages
@@ -199,11 +203,10 @@ module.exports = function (eleventyConfig) {
     return date && date.toISOString();
   });
 
-
   eleventyConfig.addFilter("link", function (str) {
     return (
       str &&
-      str.replace(/\[\[(.*?\|.*?)\]\]/g, function (match, p1) {
+      str.replace(/\[\[(.*?\|.*?)\]\]/g, async function (match, p1) {
         //Check if it is an embedded excalidraw drawing or mathjax javascript
         if (p1.indexOf("],[") > -1 || p1.indexOf('"$"') > -1) {
           return match;
@@ -217,8 +220,10 @@ module.exports = function (eleventyConfig) {
           [fileName, header] = fileLink.split("#");
           headerLinkPath = `#${headerToId(header)}`;
         }
-
-        let permalink = `/notes/${slugify(fileName)}`;
+        const translatedFileName = await translate(fileName, {
+          to: "en",
+        }).then((res) => res);
+        let permalink = `/notes/${slugify(translatedFileName)}`;
         let noteIcon = process.env.NOTE_ICON_DEFAULT;
         const title = linkTitle ? linkTitle : fileName;
         let deadLink = false;
@@ -246,7 +251,7 @@ module.exports = function (eleventyConfig) {
           deadLink = true;
         }
 
-        if(deadLink){
+        if (deadLink) {
           return `<a class="internal-link is-unresolved" href="/404">${title}</a>`;
         }
         return `<a class="internal-link" data-note-icon="${noteIcon}" href="${permalink}${headerLinkPath}">${title}</a>`;
@@ -344,8 +349,8 @@ module.exports = function (eleventyConfig) {
   });
 
   function fillPictureSourceSets(src, cls, alt, meta, width, imageTag) {
-      imageTag.tagName = "picture";
-      let html = `<source
+    imageTag.tagName = "picture";
+    let html = `<source
       media="(max-width:480px)"
       srcset="${meta.webp[0].url}"
       type="image/webp"
@@ -354,29 +359,28 @@ module.exports = function (eleventyConfig) {
       media="(max-width:480px)"
       srcset="${meta.jpeg[0].url}"
       />
-      `
-      if (meta.webp && meta.webp[1] && meta.webp[1].url) {
-        html += `<source
+      `;
+    if (meta.webp && meta.webp[1] && meta.webp[1].url) {
+      html += `<source
         media="(max-width:1920px)"
         srcset="${meta.webp[1].url}"
         type="image/webp"
-        />`
-      }
-      if (meta.jpeg && meta.jpeg[1] && meta.jpeg[1].url) {
-        html += `<source
+        />`;
+    }
+    if (meta.jpeg && meta.jpeg[1] && meta.jpeg[1].url) {
+      html += `<source
         media="(max-width:1920px)"
         srcset="${meta.jpeg[1].url}"
-        />`
-      }
-      html += `<img
+        />`;
+    }
+    html += `<img
       class="${cls.toString()}"
       src="${src}"
       alt="${alt}"
       width="${width}"
       />`;
-      imageTag.innerHTML = html;
-    }
-    
+    imageTag.innerHTML = html;
+  }
 
   eleventyConfig.addTransform("picture", function (str) {
     const parsed = parse(str);
@@ -385,7 +389,7 @@ module.exports = function (eleventyConfig) {
       if (src && src.startsWith("/") && !src.endsWith(".svg")) {
         const cls = imageTag.classList.value;
         const alt = imageTag.getAttribute("alt");
-        const width = imageTag.getAttribute("width") || '';
+        const width = imageTag.getAttribute("width") || "";
 
         try {
           const meta = transformImage(
@@ -458,7 +462,6 @@ module.exports = function (eleventyConfig) {
     ul: true,
     tags: ["h1", "h2", "h3", "h4", "h5", "h6"],
   });
- 
 
   eleventyConfig.addFilter("dateToZulu", function (date) {
     if (!date) return "";
@@ -477,7 +480,7 @@ module.exports = function (eleventyConfig) {
     return variable;
   });
 
- eleventyConfig.addPlugin(pluginRss, {
+  eleventyConfig.addPlugin(pluginRss, {
     posthtmlRenderOptions: {
       closingSingleTag: "slash",
       singleTags: ["link"],
