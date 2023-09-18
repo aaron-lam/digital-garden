@@ -1,5 +1,4 @@
 const slugify = require("@sindresorhus/slugify");
-const translate = require("translate-google");
 const markdownIt = require("markdown-it");
 const fs = require("fs");
 const matter = require("gray-matter");
@@ -206,7 +205,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("link", function (str) {
     return (
       str &&
-      str.replace(/\[\[(.*?\|.*?)\]\]/g, async function (match, p1) {
+      str.replace(/\[\[(.*?\|.*?)\]\]/g, function (match, p1) {
         //Check if it is an embedded excalidraw drawing or mathjax javascript
         if (p1.indexOf("],[") > -1 || p1.indexOf('"$"') > -1) {
           return match;
@@ -220,10 +219,7 @@ module.exports = function (eleventyConfig) {
           [fileName, header] = fileLink.split("#");
           headerLinkPath = `#${headerToId(header)}`;
         }
-        const translatedFileName = await translate(fileName, {
-          to: "en",
-        }).then((res) => res);
-        let permalink = `/notes/${slugify(translatedFileName)}`;
+        let permalink = `/notes/${slugify(fileName)}`;
         let noteIcon = process.env.NOTE_ICON_DEFAULT;
         const title = linkTitle ? linkTitle : fileName;
         let deadLink = false;
